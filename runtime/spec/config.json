@@ -7,7 +7,7 @@
 			"gid": 0
 		},
 		"args": [
-			"sh"
+			"/bin/bash"
 		],
 		"env": [
 			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
@@ -51,8 +51,8 @@
 		"noNewPrivileges": true
 	},
 	"root": {
-		"path": "rootfs",
-		"readonly": true
+		"path": "/home/yosuke/works/rootfs",
+		"readonly": false
 	},
 	"hostname": "runchost",
 	"mounts": [

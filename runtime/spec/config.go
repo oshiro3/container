@@ -8,6 +8,16 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
+var namespaceMapping = map[specs.LinuxNamespaceType]NamespaceType{
+	specs.PIDNamespace:     NEWPID,
+	specs.NetworkNamespace: NEWNET,
+	specs.MountNamespace:   NEWNS,
+	specs.UserNamespace:    NEWUSER,
+	specs.IPCNamespace:     NEWIPC,
+	specs.UTSNamespace:     NEWUTS,
+	specs.CgroupNamespace:  NEWCGROUP,
+}
+
 // IDMap represents UID/GID Mappings for User Namespaces.
 type IDMap struct {
 	ContainerID int `json:"container_id"`
@@ -15,11 +25,20 @@ type IDMap struct {
 	Size        int `json:"size"`
 }
 
+type Process struct {
+	// The command to be run followed by any arguments.
+	Args []string
+
+	// Env specifies the environment variables for the process.
+	Env []string
+}
+
 // Config defines configuration options for executing a process inside a contained environment.
 type Config struct {
-
 	// Path to a directory containing the container's root filesystem.
 	Rootfs string `json:"rootfs"`
+
+	Process *Process `json:"process"`
 
 	// Readonlyfs will remount the container's rootfs as readonly where only externally mounted
 	// bind mounts are writtable.
@@ -92,4 +111,23 @@ func loadSpec(cPath string) (spec *specs.Spec, err error) {
 	}
 	// return spec, validateProcessSpec(spec.Process)
 	return spec, nil
+}
+
+func setupUserNamespace(spec *specs.Spec, config *Config) error {
+	create := func(m specs.LinuxIDMapping) IDMap {
+		return IDMap{
+			HostID:      int(m.HostID),
+			ContainerID: int(m.ContainerID),
+			Size:        int(m.Size),
+		}
+	}
+	if spec.Linux != nil {
+		for _, m := range spec.Linux.UIDMappings {
+			config.UidMappings = append(config.UidMappings, create(m))
+		}
+		for _, m := range spec.Linux.GIDMappings {
+			config.GidMappings = append(config.GidMappings, create(m))
+		}
+	}
+	return nil
 }
