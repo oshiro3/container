@@ -19,7 +19,7 @@ func (c *Container) Run() error {
 	// initプロセスとして子プロセスを起動
 	cmd := exec.Command("/proc/self/exe", append([]string{"init"}, c.Command...)...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Cloneflags: syscall.CLONE_NEWNS | syscall.CLONE_NEWPID | syscall.CLONE_NEWUTS,
+		Cloneflags: syscall.CLONE_NEWNS | syscall.CLONE_NEWPID | syscall.CLONE_NEWUTS | syscall.CLONE_NEWIPC,
 	}
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
