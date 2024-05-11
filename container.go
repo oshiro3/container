@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"os/exec"
 	"syscall"
@@ -15,18 +16,46 @@ type Container struct {
 
 // Run はコンテナ内で指定されたコマンドを実行する
 func (c *Container) Run() error {
-	if err := syscall.Chroot(c.Rootfs); err != nil {
-		return err
+	// initプロセスとして子プロセスを起動
+	cmd := exec.Command("/proc/self/exe", append([]string{"init"}, c.Command...)...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		// 	// Cloneflags: syscall.CLONE_NEWNS,
+		// Cloneflags: syscall.CLONE_NEWPID,
 	}
-
-	if err := os.Chdir("/"); err != nil {
-		return err
-	}
-
-	cmd := exec.Command(c.Command[0], c.Command[1:]...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	return cmd.Run()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	// initプロセスとして起動した子プロセスの終了を待つ
+	return cmd.Wait()
+}
+
+// Initは実際にユーザが指定したコマンドを実行する
+func (c *Container) Init() error {
+	// ここでrootfsにchrootするなどの処理を行う
+	if err := syscall.Chroot(c.Rootfs); err != nil {
+		return err
+	}
+	log.Println("chroot to rootfs")
+	if err := os.Chdir("/"); err != nil {
+		return err
+	}
+	log.Println("chdir to /")
+
+	// ユーザのコマンドを実行します
+	log.Printf("exec command: %v", os.Args[2:])
+	cmd := exec.Command(os.Args[2], os.Args[3:]...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("command end")
+	return nil
 }
