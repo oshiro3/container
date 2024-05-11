@@ -19,7 +19,7 @@ func (c *Container) Run() error {
 	// initプロセスとして子プロセスを起動
 	cmd := exec.Command("/proc/self/exe", append([]string{"init"}, c.Command...)...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Cloneflags: syscall.CLONE_NEWNS | syscall.CLONE_NEWPID,
+		Cloneflags: syscall.CLONE_NEWNS | syscall.CLONE_NEWPID | syscall.CLONE_NEWUTS,
 	}
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -44,8 +44,13 @@ func (c *Container) Init() error {
 		return err
 	}
 	log.Println("chdir to /")
+
+	// procfsをマウントする
 	syscall.Mount("proc", "proc", "proc", 0, "")
 	defer syscall.Unmount("proc", 0)
+
+	// ホスト名を設定する
+	syscall.Sethostname([]byte("container"))
 
 	// ユーザのコマンドを実行します
 	log.Printf("exec command: %v", os.Args[2:])
