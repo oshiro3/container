@@ -19,8 +19,7 @@ func (c *Container) Run() error {
 	// initプロセスとして子プロセスを起動
 	cmd := exec.Command("/proc/self/exe", append([]string{"init"}, c.Command...)...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-		// 	// Cloneflags: syscall.CLONE_NEWNS,
-		// Cloneflags: syscall.CLONE_NEWPID,
+		Cloneflags: syscall.CLONE_NEWNS | syscall.CLONE_NEWPID,
 	}
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -36,7 +35,7 @@ func (c *Container) Run() error {
 
 // Initは実際にユーザが指定したコマンドを実行する
 func (c *Container) Init() error {
-	// ここでrootfsにchrootするなどの処理を行う
+	// rootfsにchrootするなどの処理を行う
 	if err := syscall.Chroot(c.Rootfs); err != nil {
 		return err
 	}
@@ -45,6 +44,8 @@ func (c *Container) Init() error {
 		return err
 	}
 	log.Println("chdir to /")
+	syscall.Mount("proc", "proc", "proc", 0, "")
+	defer syscall.Unmount("proc", 0)
 
 	// ユーザのコマンドを実行します
 	log.Printf("exec command: %v", os.Args[2:])
@@ -56,6 +57,7 @@ func (c *Container) Init() error {
 	if err := cmd.Run(); err != nil {
 		log.Fatal(err)
 	}
+
 	log.Println("command end")
 	return nil
 }
